@@ -109,6 +109,23 @@ class Game:
 
             pygame.draw.lines(screen, color, False, [p1, p2], width=width)
 
+    def preprocess(self, frame):
+        rgb_planes = cv2.split(frame)
+
+        result_planes = []
+        result_norm_planes = []
+        for plane in rgb_planes:
+            dilated_img = cv2.dilate(plane, np.ones((7, 7), np.uint8))
+            bg_img = cv2.medianBlur(dilated_img, 21)
+            diff_img = 255 - cv2.absdiff(plane, bg_img)
+            norm_img = cv2.normalize(
+                diff_img, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
+            result_planes.append(diff_img)
+            result_norm_planes.append(norm_img)
+
+        result_norm = cv2.merge(result_norm_planes)
+        return result_norm
+
     def main(self):
         start = time.time()
         self.score = 0
@@ -234,6 +251,7 @@ class Game:
             # Apply Perspective Transform Algorithm
             matrix = cv2.getPerspectiveTransform(pts1, pts2)
             result = cv2.warpPerspective(frame, matrix, (960, 480))
+            frame = self.preprocess(frame)
             threshold_value = cv2.getTrackbarPos(
                 'Threshold', 'Parameter Adjust')
             blur_value = cv2.getTrackbarPos('Blur', 'Parameter Adjust')
